@@ -94,6 +94,29 @@ class FrontendInfo(Converter, ColorizeText):
 		self.boolHandler = getattr(self, self.BOOL_HANDLERS.get(self.type, "boolUnsupported"))
 		self.valueHandler = getattr(self, self.VALUE_HANDLERS.get(self.type, "valueUnsupported"))
 
+	def getAGC(self):
+		agc = self.source.agc
+		# Si2166D/Si2169D frontends report a small bogus non-zero AGC
+		# value (seen: 89-124) instead of None, ignore it and fall
+		# through to the SNR-based estimate below.
+		if agc and agc > 255:
+			return agc
+		# Some frontends do not expose signal strength through either
+		# DTV_STAT_SIGNAL_STRENGTH or FE_READ_SIGNAL_STRENGTH.  Keep
+		# using the driver's value when available and estimate a
+		# display value from signal quality only as a fallback.
+		snr = self.source.snr
+		if not snr:
+			return agc
+		snrPercent = snr * 100.0 / 65535.0
+		if snrPercent < 35:
+			agcPercent = snrPercent * 1.8
+		elif snrPercent < 70:
+			agcPercent = 63 + ((snrPercent - 35) * 0.8)
+		else:
+			agcPercent = 91 + ((snrPercent - 70) * 0.3)
+		return round(min(100, agcPercent) * self.range / 100.0)  # In this case round() returns an integer.
+
 	@cached
 	def getText(self):
 		return self.textHandler()
@@ -139,7 +162,7 @@ class FrontendInfo(Converter, ColorizeText):
 		return str(count) if count is not None else _("N/A")
 
 	def textAGC(self):
-		return self.percentText(self.source.agc)
+		return self.percentText(self.getAGC())
 
 	def textSNR(self):
 		return self.snrText(not config.usage.swap_snr_on_osd.value)
@@ -227,7 +250,7 @@ class FrontendInfo(Converter, ColorizeText):
 	# ---- Value ----
 
 	def valueAGC(self):
-		return self.source.agc or 0
+		return self.getAGC() or 0
 
 	def valueSNR(self):
 		return self.source.snr or 0
