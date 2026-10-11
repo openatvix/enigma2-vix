@@ -788,7 +788,7 @@ void eListbox::updateScrollBar()
 			else if (m_orientation == orHorizontal)
 				m_content->setSize(eSize(m_itemwidth, height));
 			else
-				m_content->setSize(eSize(m_itemwidth, m_itemwidth));
+				m_content->setSize(eSize(m_itemwidth, m_itemheight));
 
 			m_scrollbar->hide();
 		}
@@ -1123,7 +1123,7 @@ void eListbox::setSelectionEnable(int en)
 
 void eListbox::entryAdded(int index)
 {
-	if (m_content && (m_content->size() % m_items_per_page) == 1)
+	if (m_content && m_items_per_page && (m_content->size() % m_items_per_page) == 1)
 		m_content_changed=true;
 	/* manage our local pointers. when the entry was added before the current position, we have to advance. */
 
@@ -1166,7 +1166,7 @@ void eListbox::entryAdded(int index)
 
 void eListbox::entryRemoved(int index)
 {
-	if (m_content && !(m_content->size() % m_items_per_page))
+	if (m_content && m_items_per_page && (m_content->size() % m_items_per_page) == 1)
 		m_content_changed=true;
 
 	if (index == m_selected && m_content)
